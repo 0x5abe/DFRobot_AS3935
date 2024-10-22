@@ -84,12 +84,9 @@ sensor.set_spike_rejection(2)
 #setup rabbitmq message queue
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='localhost'))
-connection.channel(on_open_callback=on_channel_open)
-
-def on_channel_open(new_channel):
-    global channel
-    channel = new_channel
-    channel.queue_declare(queue='lightning_data', callback=on_queue_declared)
+global channel
+channel = connection.channel()
+channel.queue_declare(queue='lightning_data', callback=on_queue_declared)
 
 def callback_handle(channel):
   global sensor
