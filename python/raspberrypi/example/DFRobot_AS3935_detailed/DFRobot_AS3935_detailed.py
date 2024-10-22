@@ -15,6 +15,9 @@
  # @url https://github.com/DFRobor/DFRobot_AS3935
 '''
 import sys
+import pika
+import json
+import datetime
 sys.path.append('../')
 import time
 from DFRobot_AS3935_Lib import DFRobot_AS3935
@@ -28,11 +31,11 @@ AS3935_I2C_ADDR3 = 0X03
 
 #Antenna tuning capcitance (must be integer multiple of 8, 8 - 120 pf)
 AS3935_CAPACITANCE = 96
-IRQ_PIN = 7
+IRQ_PIN = 37
 
 GPIO.setmode(GPIO.BOARD)
 
-sensor = DFRobot_AS3935(AS3935_I2C_ADDR3, bus = 1)
+sensor = DFRobot_AS3935(AS3935_I2C_ADDR2, bus = 1)
 if (sensor.reset()):
   print("init sensor sucess.")
 else:
@@ -78,6 +81,13 @@ sensor.set_spike_rejection(2)
 #view all register data
 #sensor.print_all_regs()
 
+#setup rabbitmq message queue
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(host='localhost'))
+channel = connection.channel()
+
+channel.queue_declare(queue='lightning_data')
+
 def callback_handle(channel):
   global sensor
   time.sleep(0.005)
@@ -89,10 +99,28 @@ def callback_handle(channel):
 
     lightning_energy_val = sensor.get_strike_energy_raw()
     print('Intensity: %d '%lightning_energy_val)
+
+    message = {
+      "message": 'Lightning occurs!',
+      "distance": lightning_distKm,
+      "intensity": lightning_energy_val,
+      "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+    }
+    channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 2:
     print('Disturber discovered!')
+    message = {
+      "message": 'Disturber discovered!',
+      "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+    }
+    channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 3:
     print('Noise level too high!')
+    message = {
+      "message": 'Noise level too high!',
+      "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+    }
+    channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   else:
     pass
 #Set to input mode
