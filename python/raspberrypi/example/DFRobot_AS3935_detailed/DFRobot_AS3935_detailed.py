@@ -84,9 +84,12 @@ sensor.set_spike_rejection(2)
 #setup rabbitmq message queue
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='localhost'))
-channel = connection.channel()
+connection.channel(on_open_callback=on_channel_open)
 
-channel.queue_declare(queue='lightning_data')
+def on_channel_open(new_channel):
+    global channel
+    channel = new_channel
+    channel.queue_declare(queue='lightning_data', callback=on_queue_declared)
 
 def callback_handle(channel):
   global sensor
@@ -104,30 +107,32 @@ def callback_handle(channel):
       "message": 'Lightning occurs!',
       "distance": lightning_distKm,
       "intensity": lightning_energy_val,
-      "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+      "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
     channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 2:
     print('Disturber discovered!')
     message = {
       "message": 'Disturber discovered!',
-      "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+      "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
     channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 3:
     print('Noise level too high!')
     message = {
       "message": 'Noise level too high!',
-      "datetime": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+      "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
     channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   else:
     pass
 #Set to input mode
-GPIO.setup(IRQ_PIN, GPIO.IN)
-#Set the interrupt pin, the interrupt function, rising along the trigger
-GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
-print("start lightning detect.")
+
+def on_queue_declared():
+  GPIO.setup(IRQ_PIN, GPIO.IN)
+  #Set the interrupt pin, the interrupt function, rising along the trigger
+  GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
+  print("start lightning detect.")
 
 while True:
   time.sleep(1.0)
