@@ -86,7 +86,8 @@ connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='localhost'))
 global channel
 channel = connection.channel()
-channel.queue_declare(queue='lightning_data', callback=on_queue_declared)
+channel.queue_declare(queue='lightning_data'
+print(str(channel))
 
 def callback_handle(channel):
   global sensor
@@ -125,11 +126,10 @@ def callback_handle(channel):
     pass
 #Set to input mode
 
-def on_queue_declared():
-  GPIO.setup(IRQ_PIN, GPIO.IN)
-  #Set the interrupt pin, the interrupt function, rising along the trigger
-  GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
-  print("start lightning detect.")
+GPIO.setup(IRQ_PIN, GPIO.IN)
+#Set the interrupt pin, the interrupt function, rising along the trigger
+GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
+print("start lightning detect.")
 
 while True:
   time.sleep(1.0)
