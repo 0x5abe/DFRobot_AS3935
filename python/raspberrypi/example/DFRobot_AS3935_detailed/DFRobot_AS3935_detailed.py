@@ -84,10 +84,9 @@ sensor.set_spike_rejection(2)
 #setup rabbitmq message queue
 connection = pika.BlockingConnection(
     pika.ConnectionParameters(host='localhost'))
-global channel
-channel = connection.channel()
-channel.queue_declare(queue='lightning_data'
-print(str(channel))
+global rabbitChannel
+rabbitChannel = connection.channel()
+rabbitChannel.queue_declare(queue='lightning_data')
 
 def callback_handle(channel):
   global sensor
@@ -107,21 +106,21 @@ def callback_handle(channel):
       "intensity": lightning_energy_val,
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 2:
     print('Disturber discovered!')
     message = {
       "message": 'Disturber discovered!',
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 3:
     print('Noise level too high!')
     message = {
       "message": 'Noise level too high!',
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    channel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   else:
     pass
 #Set to input mode
