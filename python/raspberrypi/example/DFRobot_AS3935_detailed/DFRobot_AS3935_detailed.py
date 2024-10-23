@@ -82,25 +82,26 @@ sensor.set_spike_rejection(2)
 #sensor.print_all_regs()
 
 #setup rabbitmq message queue
-#connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+#connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=300, blocked_connection_timeout=600))
 #global rabbitChannel
 #rabbitChannel = connection.channel()
 #rabbitChannel.queue_declare(queue='lightning_data')
-global hasNotDisturbed = True
+hasNotDisturbed = True
 
 def callback_handle(channel):
   global sensor
+  global hasNotDisturbed
   time.sleep(0.005)
   intSrc = sensor.get_interrupt_src()
   if intSrc == 1:
     lightning_distKm = sensor.get_lightning_distKm()
     lightning_energy_val = sensor.get_strike_energy_raw()
-    print('Lightning occurs! - Distance: {} - Intensity: {} - Time: {}'.format(lightning_distKm, lightning_energy_val, datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")))
+    print('Lightning occurs! - Distance: {} - Intensity: {} - Time: {}'.format(lightning_distKm, lightning_energy_val, datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")))    
     #print('Distance: %dkm'%lightning_distKm)
 
     #lightning_energy_val = sensor.get_strike_energy_raw()
     #print('Intensity: %d '%lightning_energy_val)
-
+    
     message = {
       "message": 'Lightning occurs!',
       "distance": lightning_distKm,
