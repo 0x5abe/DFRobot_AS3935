@@ -3,6 +3,7 @@ import rabbitpy, sys, os, json
 
 EXCHANGE = ''
 ROUTING_KEY = 'lightning_data'
+QUEUE = 'lightning_queue'
 
 def main():
     with rabbitpy.Connection() as connection:
