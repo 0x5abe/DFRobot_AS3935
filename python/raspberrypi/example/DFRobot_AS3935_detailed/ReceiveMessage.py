@@ -17,7 +17,7 @@ def main():
 
     with connection.channel() as channel:
         for message in rabbitpy.Queue(channel, QUEUE).consume_messages():
-            print message.body
+            print(message.body)
             message.ack()
             received += 1
 
