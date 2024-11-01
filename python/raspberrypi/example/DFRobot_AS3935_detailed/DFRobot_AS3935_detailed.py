@@ -121,7 +121,7 @@ def callback_handle(channel):
     return
   with connection.channel() as channel:
     messageToSend = rabbitpy.Message(channel, json.dumps(message))
-    message.publish(EXCHANGE, ROUTING_KEY)
+    messageToSend.publish(EXCHANGE, ROUTING_KEY)
 #Set to input mode
 
 
