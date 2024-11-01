@@ -15,7 +15,7 @@
  # @url https://github.com/DFRobor/DFRobot_AS3935
 '''
 import sys
-import pika
+import rabbitpy
 import json
 import datetime
 sys.path.append('../')
@@ -28,6 +28,8 @@ from datetime import datetime
 AS3935_I2C_ADDR1 = 0X01
 AS3935_I2C_ADDR2 = 0X02
 AS3935_I2C_ADDR3 = 0X03
+EXCHANGE = ''
+ROUTING_KEY = 'lightning_data'
 
 #Antenna tuning capcitance (must be integer multiple of 8, 8 - 120 pf)
 AS3935_CAPACITANCE = 96
@@ -82,11 +84,6 @@ sensor.set_spike_rejection(2)
 #sensor.print_all_regs()
 
 #setup rabbitmq message queue
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=300, blocked_connection_timeout=600))
-global rabbitChannel
-rabbitChannel = connection.channel()
-rabbitChannel.queue_declare(queue='lightning_data')
-hasNotDisturbed = True
 
 def callback_handle(channel):
   global sensor
@@ -106,7 +103,6 @@ def callback_handle(channel):
       "intensity": lightning_energy_val,
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 2:
     if hasNotDisturbed:
       print('Disturber discovered! - Time: {}'.format(datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")))
@@ -115,26 +111,35 @@ def callback_handle(channel):
       "message": 'Disturber discovered!',
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 3:
     print('Noise level too high!')
     message = {
       "message": 'Noise level too high!',
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   else:
-    pass
+    return
+  with connection.channel() as channel:
+    messageToSend = rabbitpy.Message(channel, json.dumps(message))
+    message.publish(EXCHANGE, ROUTING_KEY)
 #Set to input mode
 
-GPIO.setup(IRQ_PIN, GPIO.IN)
-#Set the interrupt pin, the interrupt function, rising along the trigger
-GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
-print("start lightning detect.")
 
-while True:
-  connection.process_data_events()
-  print("sent heartbeat")
-  time.sleep(1.0)
+with rabbitpy.Connection() as connection:
+  hasNotDisturbed = True
+
+  # with connection.channel() as channel:
+  #   exchange = rabbitpy.Exchange(channel, EXCHANGE)
+  #   exchange.declare()
+
+  GPIO.setup(IRQ_PIN, GPIO.IN)
+  #Set the interrupt pin, the interrupt function, rising along the trigger
+  GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
+  print("start lightning detect.")
+
+  while True:
+    connection.process_data_events()
+    print("sent heartbeat")
+    time.sleep(1.0)
 
 
