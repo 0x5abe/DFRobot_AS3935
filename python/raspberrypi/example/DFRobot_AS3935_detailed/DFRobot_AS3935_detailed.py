@@ -82,10 +82,10 @@ sensor.set_spike_rejection(2)
 #sensor.print_all_regs()
 
 #setup rabbitmq message queue
-#connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=300, blocked_connection_timeout=600))
-#global rabbitChannel
-#rabbitChannel = connection.channel()
-#rabbitChannel.queue_declare(queue='lightning_data')
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=300, blocked_connection_timeout=600))
+global rabbitChannel
+rabbitChannel = connection.channel()
+rabbitChannel.queue_declare(queue='lightning_data')
 hasNotDisturbed = True
 
 def callback_handle(channel):
@@ -98,8 +98,6 @@ def callback_handle(channel):
     lightning_energy_val = sensor.get_strike_energy_raw()
     print('Lightning occurs! - Distance: {} - Intensity: {} - Time: {}'.format(lightning_distKm, lightning_energy_val, datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")))    
     #print('Distance: %dkm'%lightning_distKm)
-
-    #lightning_energy_val = sensor.get_strike_energy_raw()
     #print('Intensity: %d '%lightning_energy_val)
     
     message = {
@@ -108,7 +106,7 @@ def callback_handle(channel):
       "intensity": lightning_energy_val,
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    #rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 2:
     if hasNotDisturbed:
       print('Disturber discovered! - Time: {}'.format(datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")))
@@ -117,14 +115,14 @@ def callback_handle(channel):
       "message": 'Disturber discovered!',
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    #rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   elif intSrc == 3:
     print('Noise level too high!')
     message = {
       "message": 'Noise level too high!',
       "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
-    #rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
   else:
     pass
 #Set to input mode
@@ -135,6 +133,8 @@ GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
 print("start lightning detect.")
 
 while True:
+  connection._heartbeat_checker._send_heartbeat()
+  print("sent heartbeat")
   time.sleep(1.0)
 
 
