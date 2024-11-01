@@ -138,8 +138,6 @@ with rabbitpy.Connection() as connection:
   print("start lightning detect.")
 
   while True:
-    connection.process_data_events()
-    print("sent heartbeat")
     time.sleep(1.0)
 
 
