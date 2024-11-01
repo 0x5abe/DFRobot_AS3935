@@ -133,7 +133,7 @@ GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
 print("start lightning detect.")
 
 while True:
-  connection._heartbeat_checker._send_heartbeat()
+  connection.process_data_events()
   print("sent heartbeat")
   time.sleep(1.0)
 
