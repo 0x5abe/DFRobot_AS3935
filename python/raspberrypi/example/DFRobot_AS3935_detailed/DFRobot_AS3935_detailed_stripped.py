@@ -20,9 +20,10 @@ import json
 import datetime
 sys.path.append('../')
 import time
-from DFRobot_AS3935_Lib import DFRobot_AS3935
-import RPi.GPIO as GPIO
+#from DFRobot_AS3935_Lib import DFRobot_AS3935
+#import RPi.GPIO as GPIO
 from datetime import datetime
+import random
 
 #I2C address
 AS3935_I2C_ADDR1 = 0X01
@@ -33,69 +34,69 @@ AS3935_I2C_ADDR3 = 0X03
 AS3935_CAPACITANCE = 96
 IRQ_PIN = 37
 
-GPIO.setmode(GPIO.BOARD)
+#GPIO.setmode(GPIO.BOARD)
 
-sensor = DFRobot_AS3935(AS3935_I2C_ADDR2, bus = 1)
-if (sensor.reset()):
-  print("init sensor sucess.")
-else:
-  print("init sensor fail")
-  while True:
-    pass
-#Configure sensor
-sensor.power_up()
+# sensor = DFRobot_AS3935(AS3935_I2C_ADDR2, bus = 1)
+# if (#sensor.reset()):
+#   print("init sensor sucess.")
+# else:
+#   print("init sensor fail")
+#   while True:
+#     pass
+# #Configure sensor
+# #sensor.power_up()
 
-#set indoors or outdoors models
-sensor.set_indoors()
-#sensor.set_outdoors()
+# #set indoors or outdoors models
+# #sensor.set_indoors()
+# ##sensor.set_outdoors()
 
-#disturber detection
-sensor.disturber_en()
-#sensor.disturber_dis()
+# #disturber detection
+# #sensor.disturber_en()
+# ##sensor.disturber_dis()
 
-sensor.set_irq_output_source(0)
-time.sleep(0.5)
-#set capacitance
-sensor.set_tuning_caps(AS3935_CAPACITANCE)
+# #sensor.set_irq_output_source(0)
+# time.sleep(0.5)
+# #set capacitance
+# #sensor.set_tuning_caps(AS3935_CAPACITANCE)
 
 # Connect the IRQ and GND pin to the oscilloscope.
 # uncomment the following sentences to fine tune the antenna for better performance.
 # This will dispaly the antenna's resonance frequency/16 on IRQ pin (The resonance frequency will be divided by 16 on this pin)
 # Tuning AS3935_CAPACITANCE to make the frequency within 500/16 kHz plus 3.5% to 500/16 kHz minus 3.5%
 #
-# sensor.setLco_fdiv(0)
-# sensor.setIrq_output_source(3)
+# #sensor.setLco_fdiv(0)
+# #sensor.setIrq_output_source(3)
 
 #Set the noise level,use a default value greater than 7
-sensor.set_noise_floor_lv1(2)
-#noiseLv = sensor.get_noise_floor_lv1()
+#sensor.set_noise_floor_lv1(2)
+#noiseLv = #sensor.get_noise_floor_lv1()
 
 #used to modify WDTH,alues should only be between 0x00 and 0x0F (0 and 7)
-sensor.set_watchdog_threshold(2)
-#wtdgThreshold = sensor.get_watchdog_threshold()
+#sensor.set_watchdog_threshold(2)
+#wtdgThreshold = #sensor.get_watchdog_threshold()
 
 #used to modify SREJ (spike rejection),values should only be between 0x00 and 0x0F (0 and 7)
-sensor.set_spike_rejection(2)
-#spikeRejection = sensor.get_spike_rejection()
+#sensor.set_spike_rejection(2)
+#spikeRejection = #sensor.get_spike_rejection()
 
 #view all register data
-#sensor.print_all_regs()
+##sensor.print_all_regs()
 
 #setup rabbitmq message queue
-connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.1.3', heartbeat=300, blocked_connection_timeout=600))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost', heartbeat=300, blocked_connection_timeout=600))
 global rabbitChannel
 rabbitChannel = connection.channel()
 rabbitChannel.queue_declare(queue='lightning_data')
 hasNotDisturbed = True
 
 def callback_handle(channel):
-  global sensor
+  #global sensor
   global hasNotDisturbed
   time.sleep(0.005)
-  intSrc = sensor.get_interrupt_src()
-  if intSrc == 1:
-    lightning_distKm = sensor.get_lightning_distKm()
-    lightning_energy_val = sensor.get_strike_energy_raw()
+  #intSrc = #sensor.get_interrupt_src()
+  if True:
+    lightning_distKm = 420#sensor.get_lightning_distKm()
+    lightning_energy_val = 69#sensor.get_strike_energy_raw()
     print('Lightning occurs! - Distance: {} - Intensity: {} - Time: {}'.format(lightning_distKm, lightning_energy_val, datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")))    
     #print('Distance: %dkm'%lightning_distKm)
     #print('Intensity: %d '%lightning_energy_val)
@@ -127,15 +128,26 @@ def callback_handle(channel):
     pass
 #Set to input mode
 
-GPIO.setup(IRQ_PIN, GPIO.IN)
+#GPIO.setup(IRQ_PIN, GPIO.IN)
 #Set the interrupt pin, the interrupt function, rising along the trigger
-GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
+#GPIO.add_event_detect(IRQ_PIN, GPIO.RISING, callback = callback_handle)
 print("start lightning detect.")
 
-s = 0
+s=0
+
 while True:
   connection.process_data_events()
   print("sent heartbeat seconds: " + str(s))
+  rand_num = random.randint(1,3)
+  if s % 600 == 0 and rand_num == 2:
+    message = {
+      "message": 'Message ' + str(s),
+      "distance": 420,
+      "intensity": 69,
+      "datetime": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+    }
+    rabbitChannel.basic_publish(exchange='', routing_key='lightning_data', body=json.dumps(message))
+    print("sent message seconds: " + str(s))
   time.sleep(1.0)
   s = s + 1
 
